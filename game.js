@@ -76,6 +76,8 @@ let state = {
   hasPlayedTodaySpecial: false, // prevents replaying the daily word to farm streak
   isRevealing:   false,       // true while tile flip animation runs (blocks input)
   isValidating:  false,       // true while dictionary API call is in-flight (blocks double-submit)
+  hintsUsed:      0,          // number of letters revealed by hint this game (max = word length)
+  revealedByHint: [],         // indices revealed by the hint button
   warningPlayed: false,       // one-shot flag for 60-second sound cue
   dangerPlayed:  false,       // one-shot flag for 30-second sound cue
   user:          null,
@@ -102,6 +104,7 @@ const els = {
   guessBoard:        document.getElementById('guessBoard'),
   keyboard:          document.getElementById('keyboard'),
   floatContainer:    document.getElementById('floatContainer'),
+  revealHintBtn:     document.getElementById('revealHintBtn'),
   resultEmoji:       document.getElementById('resultEmoji'),
   resultTitle:       document.getElementById('resultTitle'),
   revealWord:        document.getElementById('revealWord'),
@@ -551,6 +554,11 @@ function bindEvents() {
     });
   }
 
+  // Reveal hint button
+  if (els.revealHintBtn) {
+    els.revealHintBtn.addEventListener('click', useRevealHint);
+  }
+
   // Physical keyboard support
   document.addEventListener('keydown', onPhysicalKey);
 
@@ -585,6 +593,80 @@ async function loadAnnouncement() {
   }
 }
 
+
+// ==========================================
+//  REVEAL HINT
+//  Reveals one random unrevealed letter per press.
+//  Each press costs one scoring tier for all remaining guesses.
+//  Stacks: 1 reveal = tier−1, 2 reveals = tier−2, etc.
+//  Button stays active until all letters are revealed.
+//  Max tiers = GREEN_PTS_BY_GUESS.length − 1 (4 drops, then floor)
+// ==========================================
+
+const MAX_HINTS = 3;
+
+function useRevealHint() {
+  if (state.gameOver || state.phase !== 'game' || state.hintsUsed >= MAX_HINTS) return;
+
+  const { word, guessResults, revealedByHint } = state;
+
+  // Build set of already-revealed positions
+  const alreadyRevealed = new Set(revealedByHint);
+  guessResults.forEach(row => {
+    row.forEach((g, i) => { if (g.result === 'correct') alreadyRevealed.add(i); });
+  });
+
+  // Collect unrevealed positions
+  const unrevealed = [];
+  for (let i = 0; i < word.length; i++) {
+    if (!alreadyRevealed.has(i)) unrevealed.push(i);
+  }
+
+  if (unrevealed.length === 0) {
+    showToast('All letters already revealed!');
+    if (els.revealHintBtn) {
+      els.revealHintBtn.disabled = true;
+      els.revealHintBtn.classList.add('used');
+    }
+    return;
+  }
+
+  // Pick one random unrevealed position
+  const pick = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+  state.hintsUsed++;
+  state.revealedByHint.push(pick);
+
+  // Update word display
+  updateWordHintDisplay();
+  Audio.sfx.present();
+
+  // Figure out current tier for messaging
+  const currentTierPts = GREEN_PTS_BY_GUESS[Math.min(state.hintsUsed, GREEN_PTS_BY_GUESS.length - 1)];
+  const remaining = unrevealed.length - 1; // after this reveal
+
+  showToast(`Letter revealed! Greens now worth ${currentTierPts} pts/letter`);
+
+  // Update button label — show what the NEXT reveal will cost
+  if (els.revealHintBtn) {
+    if (remaining === 0 || state.hintsUsed >= MAX_HINTS) {
+      // No more reveals allowed
+      els.revealHintBtn.disabled = true;
+      els.revealHintBtn.classList.add('used');
+      els.revealHintBtn.innerHTML = remaining === 0 ? '💡 All revealed' : '💡 Max reveals used';
+    } else {
+      const nextTierPts = GREEN_PTS_BY_GUESS[Math.min(state.hintsUsed + 1, GREEN_PTS_BY_GUESS.length - 1)];
+      const left = MAX_HINTS - state.hintsUsed;
+      els.revealHintBtn.innerHTML = `💡 Reveal a Letter <span class="hint-cost">greens → ${nextTierPts} pts · ${left} left</span>`;
+    }
+  }
+
+  // GA4
+  gtagEvent('hint_used', {
+    topic:       state.topicId,
+    hint_number: state.hintsUsed,
+    tier_after:  currentTierPts,
+  });
+}
 
 function onPhysicalKey(e) {
   if (state.phase !== 'game' || state.gameOver || state.isRevealing) return;
@@ -625,6 +707,9 @@ function startGame(wordData, isSpecialWord = false) {
   state.isValidating   = false;
   state.warningPlayed  = false;
   state.dangerPlayed   = false;
+  state.hintUsed       = false; // kept for backward compat, unused
+  state.hintsUsed      = 0;
+  state.revealedByHint = [];
 
   renderGameUI();
   showScreen('game');
@@ -660,6 +745,14 @@ function renderGameUI() {
   // Show blank letter placeholders
   updateWordHintDisplay();
 
+  // Reset hint button for this game — show what first reveal will cost (tier 2 = 8 pts)
+  if (els.revealHintBtn) {
+    const firstPenaltyPts = GREEN_PTS_BY_GUESS[Math.min(1, GREEN_PTS_BY_GUESS.length - 1)];
+    els.revealHintBtn.disabled = false;
+    els.revealHintBtn.classList.remove('used');
+    els.revealHintBtn.innerHTML = `💡 Reveal a Letter <span class="hint-cost">greens → ${firstPenaltyPts} pts · 3 left</span>`;
+  }
+
   // Build empty guess rows
   els.guessBoard.innerHTML = '';
   for (let r = 0; r < maxAttempts; r++) {
@@ -681,13 +774,15 @@ function renderGameUI() {
   });
 }
 
-/** Render the "_ _ _ _" hint, filling in confirmed correct positions. */
+/** Render the "_ _ _ _" hint, filling in confirmed correct positions + hint-revealed letters. */
 function updateWordHintDisplay() {
-  const { word, guessResults } = state;
+  const { word, guessResults, revealedByHint } = state;
   const revealed = new Array(word.length).fill(false);
   guessResults.forEach(row => {
     row.forEach((g, i) => { if (g.result === 'correct') revealed[i] = true; });
   });
+  // Also mark positions revealed by the hint button
+  revealedByHint.forEach(i => { revealed[i] = true; });
   els.wordHint.textContent = word.split('').map((ch, i) => revealed[i] ? ch : '_').join(' ');
 }
 
@@ -888,7 +983,8 @@ function submitGuess() {
 
     // ── Score: green letters earn decay-based points per guess number ──
     // Earlier guesses are worth more (guess 1 = 10 pts/green, guess 2 = 8, …)
-    const guessIdx     = rowIdx; // 0-based attempt index
+    // Each letter revealed via hint drops scoring one tier (stacks per reveal used).
+    const guessIdx     = rowIdx + state.hintsUsed;
     const ptsPerGreen  = GREEN_PTS_BY_GUESS[Math.min(guessIdx, GREEN_PTS_BY_GUESS.length - 1)];
     let pointsThisGuess = 0;
     result.forEach(g => {
@@ -996,7 +1092,7 @@ function revealRow(rowIdx, result, onComplete) {
 
         // Floating score label for green tiles — shows actual pts earned this guess
         if (g.result === 'correct') {
-          const gIdx = rowIdx;
+          const gIdx = rowIdx + state.hintsUsed;
           const pts  = GREEN_PTS_BY_GUESS[Math.min(gIdx, GREEN_PTS_BY_GUESS.length - 1)];
           spawnScoreFloat(tile, `+${pts}`);
         }
