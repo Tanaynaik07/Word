@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WordTide Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --abyss:     #080f1f;
+      --deep:      #0b1e36;
+      --current:   #0d2d4a;
+      --mid:       #1a4060;
+      --glow:      #00d4aa;
+      --glow-dim:  rgba(0,212,170,0.10);
+      --glow-soft: rgba(0,212,170,0.30);
+      --gold:      #ffd166;
+      --white:     #e8f4f2;
+      --muted:     rgba(232,244,242,0.45);
+      --danger:    #ff6b6b;
+      --danger-dim:rgba(255,107,107,0.12);
+      --warn:      #ffbe76;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 22px;
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body:    'Inter', sans-serif;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--abyss);
+      color: var(--white);
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    /* ── LOCK SCREEN ── */
+    #lockScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--abyss);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 24px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    #lockScreen.hidden { display: none; }
+
+    .lock-icon { font-size: 52px; }
+
+    .lock-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--glow);
+    }
+
+    .lock-sub {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 300px;
+    }
+
+    .lock-error {
+      color: var(--danger);
+      font-size: 13px;
+      min-height: 20px;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font-display);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .btn-primary {
+      background: var(--glow);
+      color: var(--abyss);
+      padding: 10px 20px;
+      font-size: 14px;
+    }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1.5px solid rgba(0,212,170,0.25);
+      color: var(--glow);
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+    .btn-ghost:hover { background: var(--glow-dim); border-color: var(--glow); }
+
+    .btn-danger {
+      background: var(--danger-dim);
+      border: 1.5px solid rgba(255,107,107,0.3);
+      color: var(--danger);
+      padding: 6px 14px;
+      font-size: 12px;
+    }
+    .btn-danger:hover { background: rgba(255,107,107,0.22); border-color: var(--danger); }
+
+    .btn-sm {
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* ── LAYOUT ── */
+    .admin-wrap {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--deep);
+      border-right: 1px solid rgba(0,212,170,0.1);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-logo {
+      padding: 22px 20px 18px;
+      border-bottom: 1px solid rgba(0,212,170,0.08);
+    }
+
+    .sidebar-logo .logo-wave {
+      color: var(--glow);
+      font-size: 18px;
+      display: inline-block;
+      animation: sway 3s ease-in-out infinite;
+    }
+    @keyframes sway {
+      0%, 100% { transform: rotate(-8deg); }
+      50% { transform: rotate(8deg); }
+    }
+
+    .sidebar-logo .logo-text {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .sidebar-logo .admin-badge {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--muted);
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item:hover { background: var(--glow-dim); color: var(--white); }
+    .nav-item.active { background: var(--glow-dim); color: var(--glow); border-left: 2px solid var(--glow); }
+    .nav-icon { font-size: 15px; }
+    .nav-label { flex: 1; }
+
+    .sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid rgba(0,212,170,0.08);
+    }
+
+    .admin-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .admin-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--mid);
+      object-fit: cover;
+    }
+
+    .admin-name {
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .admin-role {
+      font-size: 10px;
+      color: var(--glow);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* ── MAIN CONTENT ── */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      max-width: 1000px;
+    }
+
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    .page-header {
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(0,212,170,0.1);
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+
+    .page-sub { color: var(--muted); font-size: 13px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--deep);
+      border: 1px solid rgba(0,212,170,0.1);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--glow);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── STAT GRID ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--current);
+      border: 1px solid rgba(0,212,170,0.1);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+    }
+
+    .stat-val {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--glow);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-lbl {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── TODAY'S WORD CARD ── */
+    .word-of-day-card {
+      background: linear-gradient(135deg, rgba(0,212,170,0.08), rgba(255,209,102,0.05));
+      border: 1.5px solid rgba(0,212,170,0.25);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .wod-word {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--glow);
+      letter-spacing: 4px;
+    }
+
+    .wod-meta { flex: 1; }
+    .wod-hint { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    .wod-badge {
+      background: var(--gold);
+      color: #1a0a00;
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    /* ── TABLES ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th {
+      text-align: left;
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(0,212,170,0.1);
+    }
+
+    .data-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(0,212,170,0.03); }
+
+    .td-score {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--glow);
+    }
+
+    .td-name { font-weight: 500; }
+    .td-muted { color: var(--muted); }
+    .td-actions { display: flex; gap: 6px; }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--mid);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .rank-1 { background: var(--gold); color: #1a0a00; }
+    .rank-2 { background: #c0c0c0; color: #1a0a00; }
+    .rank-3 { background: #cd7f32; color: #fff; }
+
+    .user-avatar-sm {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    .banned-badge {
+      background: var(--danger-dim);
+      border: 1px solid rgba(255,107,107,0.3);
+      color: var(--danger);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    /* ── FORMS ── */
+    .form-group { margin-bottom: 16px; }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      background: var(--current);
+      border: 1.5px solid rgba(0,212,170,0.15);
+      border-radius: var(--radius-sm);
+      color: var(--white);
+      font-family: var(--font-body);
+      font-size: 14px;
+      padding: 10px 14px;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--glow);
+    }
+
+    .form-textarea { resize: vertical; min-height: 80px; }
+
+    .form-select option { background: var(--deep); }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 12px;
+      align-items: end;
+    }
+
+    /* ── ANNOUNCEMENT BANNER PREVIEW ── */
+    .announcement-preview {
+      background: var(--glow-dim);
+      border: 1px solid var(--glow-soft);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--glow);
+      margin-top: 12px;
+      min-height: 42px;
+    }
+
+    .announcement-preview.empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* ── CHART ── */
+    .chart-wrap {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 120px;
+      margin-top: 8px;
+    }
+
+    .chart-bar-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .chart-bar {
+      width: 100%;
+      background: linear-gradient(to top, var(--glow), rgba(0,212,170,0.4));
+      border-radius: 4px 4px 0 0;
+      transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      min-height: 3px;
+      position: relative;
+      cursor: default;
+    }
+
+    .chart-bar:hover::after {
+      content: attr(data-val);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--deep);
+      border: 1px solid var(--glow-soft);
+      color: var(--glow);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      margin-bottom: 4px;
+      font-family: var(--font-display);
+    }
+
+    .chart-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── TOPIC PILLS ── */
+    .topic-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--current);
+      border: 1px solid rgba(0,212,170,0.15);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 12px;
+      margin: 3px;
+    }
+
+    .topic-pill-count {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--glow);
+    }
+
+    /* ── DAILY WORDS TABLE ── */
+    .today-row { background: rgba(0,212,170,0.06) !important; }
+    .today-row td { border-color: rgba(0,212,170,0.12) !important; }
+
+    .edit-mode input {
+      background: var(--current);
+      border: 1px solid var(--glow-soft);
+      border-radius: 4px;
+      color: var(--white);
+      font-size: 13px;
+      padding: 4px 8px;
+      font-family: var(--font-body);
+      outline: none;
+      width: 100%;
+    }
+
+    /* ── TABS ── */
+    .tab-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      padding: 7px 16px;
+      border: 1px solid var(--mid);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--glow-dim);
+      border-color: var(--glow);
+      color: var(--glow);
+    }
+
+    /* ── STATUS TAG ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .tag-green { background: rgba(0,212,170,0.15); color: var(--glow); }
+    .tag-yellow { background: rgba(255,209,102,0.15); color: var(--gold); }
+    .tag-red { background: var(--danger-dim); color: var(--danger); }
+
+    /* ── TOAST ── */
+    #adminToast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: rgba(11,30,54,0.97);
+      border: 1px solid rgba(0,212,170,0.25);
+      color: var(--white);
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 22px;
+      border-radius: 999px;
+      z-index: 5000;
+      opacity: 0;
+      transition: all 0.28s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #adminToast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── CONFIRM MODAL ── */
+    #confirmModal {
+      position: fixed;
+      inset: 0;
+      z-index: 4000;
+      background: rgba(8,15,31,0.88);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #confirmModal.open { display: flex; }
+
+    .confirm-box {
+      background: var(--deep);
+      border: 1.5px solid rgba(255,107,107,0.3);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .confirm-icon { font-size: 36px; margin-bottom: 12px; }
+
+    .confirm-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .confirm-msg { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+
+    .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state-icon { font-size: 32px; margin-bottom: 8px; }
+    .empty-state-text { font-size: 13px; }
+
+    /* ── LOADING ── */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,212,170,0.2);
+      border-top-color: var(--glow);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-row {
+      text-align: center;
+      padding: 28px;
+      color: var(--muted);
+    }
+
+    /* ── WIN RATE BAR ── */
+    .win-bar-track {
+      height: 8px;
+      background: var(--current);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .win-bar-fill {
+      height: 100%;
+      background: linear-gradient(to right, var(--glow), rgba(0,212,170,0.6));
+      border-radius: 999px;
+      transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .main-content { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOCK SCREEN ── -->
+<div id="lockScreen">
+  <div class="lock-icon">🔐</div>
+  <div class="lock-title">WordTide Admin</div>
+  <div class="lock-sub">Sign in with your Google account to access the admin panel.</div>
+  <button class="btn btn-primary" id="lockSignInBtn">
+    <span>Sign in with Google</span>
+  </button>
+  <div class="lock-error" id="lockError"></div>
+</div>
+
+<!-- ── ACCESS DENIED ── -->
+<div id="deniedScreen" style="display:none; position:fixed; inset:0; z-index:9998; background:var(--abyss); display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px; text-align:center; padding:20px;">
+  <div style="font-size:48px;">🚫</div>
+  <div style="font-family:var(--font-display); font-size:22px; font-weight:700; color:var(--danger);">Access Denied</div>
+  <div style="color:var(--muted); max-width:280px; font-size:13px;">Your account doesn't have admin permissions for WordTide.</div>
+  <button class="btn btn-ghost" id="deniedSignOutBtn">Sign out</button>
+</div>
+
+<!-- ── ADMIN LAYOUT ── -->
+<div class="admin-wrap" id="adminApp" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-wave">≋</span>
+      <span class="logo-text"> WordTide</span>
+      <span class="admin-badge">Admin Panel</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-section="dashboard">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-item" data-section="leaderboard">
+        <span class="nav-icon">🏆</span>
+        <span class="nav-label">Leaderboard</span>
+      </button>
+      <button class="nav-item" data-section="words">
+        <span class="nav-icon">📝</span>
+        <span class="nav-label">Daily Words</span>
+      </button>
+      <button class="nav-item" data-section="announcement">
+        <span class="nav-icon">📣</span>
+        <span class="nav-label">Announcement</span>
+      </button>
+      <button class="nav-item" data-section="analytics">
+        <span class="nav-icon">📈</span>
+        <span class="nav-label">Analytics</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="admin-user" id="sidebarUser">
+        <img class="admin-avatar" id="sidebarAvatar" src="" alt="" />
+        <div>
+          <div class="admin-name" id="sidebarName">—</div>
+          <div class="admin-role">Super Admin</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost" style="width:100%; justify-content:center; font-size:12px;" id="sidebarSignOut">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+
+    <!-- ── DASHBOARD ── -->
+    <section id="section-dashboard" class="page-section active">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Live overview of WordTide — refreshes on load.</div>
+      </div>
+
+      <div class="stat-grid" id="dashStats">
+        <div class="stat-card">
+          <div class="stat-val" id="statTotalPlayers">—</div>
+          <div class="stat-lbl">Total players</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statTodayScores">—</div>
+          <div class="stat-lbl">Wins today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statTopScore">—</div>
+          <div class="stat-lbl">Top score (all-time)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statBannedCount">—</div>
+          <div class="stat-lbl">Banned users</div>
+        </div>
+      </div>
+
+      <div class="word-of-day-card" id="wodCard">
+        <div>
+          <div class="wod-badge">✦ Word of the Day</div>
+          <div class="wod-word" id="wodWord">—</div>
+        </div>
+        <div class="wod-meta">
+          <div id="wodIndex" style="font-size:12px; color:var(--muted); margin-bottom:4px;"></div>
+          <div class="wod-hint" id="wodHint"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚡ Recent Wins</div>
+        <div id="dashRecentTable">
+          <div class="loading-row"><span class="spinner"></span> Loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── LEADERBOARD ── -->
+    <section id="section-leaderboard" class="page-section">
+      <div class="page-header">
+        <div class="page-title">Leaderboard Management</div>
+        <div class="page-sub">View, delete scores, and ban users who abuse the system.</div>
+      </div>
+
+      <div class="tab-row">
+        <button class="tab-btn active" data-lb-tab="today">Today</button>
+        <button class="tab-btn" data-lb-tab="alltime">All-Time</button>
+        <button class="tab-btn" data-lb-tab="banned">Banned Users</button>
+      </div>
+
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div id="lbTableWrap">
+          <div class="loading-row"><span class="spinner"></span> Loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── DAILY WORDS ── -->
+    <section id="section-words" class="page-section">
+      <div class="page-header">
+        <div class="page-title">Daily Words</div>
+        <div class="page-sub">Edit the rotation of Word of the Day entries. Today's word is highlighted.</div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">➕ Add a New Word</div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Word</label>
+            <input class="form-input" id="newWordInput" placeholder="OCEAN" maxlength="12" style="text-transform:uppercase;" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Hint</label>
+            <input class="form-input" id="newHintInput" placeholder="The great body of salt water" />
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-primary" id="addWordBtn">Add Word</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div id="wordsTableWrap">
+          <div class="loading-row"><span class="spinner"></span> Loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ANNOUNCEMENT ── -->
+    <section id="section-announcement" class="page-section">
+      <div class="page-header">
+        <div class="page-title">Announcement Banner</div>
+        <div class="page-sub">Set a message shown to all players on the topic selection screen.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📣 Current Banner</div>
+        <div class="announcement-preview empty" id="currentAnnouncement">
+          No active announcement.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">✏️ Set New Announcement</div>
+        <div class="form-group">
+          <label class="form-label">Message</label>
+          <textarea class="form-textarea" id="announcementInput" placeholder="🎉 New ocean topics added this week! Come explore." maxlength="200"></textarea>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="btn btn-primary" id="saveAnnouncementBtn">Publish</button>
+          <button class="btn btn-danger" id="clearAnnouncementBtn">Clear Banner</button>
+        </div>
+        <div style="margin-top:14px;">
+          <div style="font-size:11px; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Preview</div>
+          <div class="announcement-preview" id="announcementPreview" style="color:var(--glow);">Type a message above to preview it here.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ANALYTICS ── -->
+    <section id="section-analytics" class="page-section">
+      <div class="page-header">
+        <div class="page-title">Analytics</div>
+        <div class="page-sub">Derived from leaderboard data. Wins only — losses are not tracked in Firestore.</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+
+        <div class="card">
+          <div class="card-title">📅 Wins — Last 7 Days</div>
+          <div class="chart-wrap" id="winsChart">
+            <div class="loading-row" style="width:100%;"><span class="spinner"></span></div>
+          </div>
+          <div id="winsChartLabels" style="display:flex; gap:8px; margin-top:6px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📊 Win Rate</div>
+          <div id="winRateDisplay" style="margin-top:4px;">
+            <div class="loading-row"><span class="spinner"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🎯 Top Topics Played</div>
+        <div id="topTopics">
+          <div class="loading-row"><span class="spinner"></span> Loading…</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── CONFIRM MODAL ── -->
+<div id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirmIcon">⚠️</div>
+    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="adminToast"></div>
+
+<!-- ── FIREBASE + APP SCRIPT ── -->
+<script type="module">
+import { initializeApp }       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc,
+  query, orderBy, limit, serverTimestamp, updateDoc, where
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ──────────────────────────────────────────
+//  CONFIG — same as firebase.js
+// ──────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyD3Kv8j8KUwrKrCxk3gG_qH6Du9biWXGfo",
+  authDomain: "word-467f4.firebaseapp.com",
+  projectId: "word-467f4",
+  storageBucket: "word-467f4.firebasestorage.app",
+  messagingSenderId: "562934599602",
+  appId: "1:562934599602:web:45cce5de4c20cbe30cdeab",
+};
+
+// ──────────────────────────────────────────
+//  🔒 SECURITY: Admin access is controlled via Firestore.
+//  To grant access:
+//    1. Go to Firebase Console → Firestore
+//    2. Create a collection called "admins"
+//    3. Add a document with your email as the document ID
+//       e.g.  yourname@gmail.com  →  { role: "admin" }
+//  To add more admins, just add more email documents.
+//  No code changes needed.
+// ──────────────────────────────────────────
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ──────────────────────────────────────────
+//  UI HELPERS
+// ──────────────────────────────────────────
+let toastTimer;
+function toast(msg, duration = 3000) {
+  const el = document.getElementById('adminToast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function escHtml(str = '') {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/** Only allow https:// avatar URLs to prevent CSS/JS injection in src attributes. */
+function safeAvatarUrl(url) {
+  return (url && /^https:\/\//.test(url)) ? escHtml(url) : null;
+}
+
+/** Render a numeric score safely (fall back to 0 if not a finite number). */
+function safeScore(val) {
+  const n = Number(val);
+  return Number.isFinite(n) ? Math.floor(n) : 0;
+}
+
+let confirmResolve = null;
+function confirm(icon, title, msg) {
+  return new Promise(resolve => {
+    document.getElementById('confirmIcon').textContent = icon;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmModal').classList.add('open');
+    confirmResolve = resolve;
+  });
+}
+
+document.getElementById('confirmCancel').onclick = () => {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (confirmResolve) confirmResolve(false);
+};
+document.getElementById('confirmOk').onclick = () => {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (confirmResolve) confirmResolve(true);
+};
+
+// ──────────────────────────────────────────
+//  AUTH + ACCESS CONTROL
+// ──────────────────────────────────────────
+const lockScreen   = document.getElementById('lockScreen');
+const deniedScreen = document.getElementById('deniedScreen');
+const adminApp     = document.getElementById('adminApp');
+
+document.getElementById('lockSignInBtn').onclick = async () => {
+  const btn = document.getElementById('lockSignInBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Signing in…';
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (e) {
+    document.getElementById('lockError').textContent = 'Sign-in failed. Please try again.';
+    btn.disabled = false;
+    btn.innerHTML = 'Sign in with Google';
+  }
+};
+
+document.getElementById('deniedSignOutBtn').onclick = () => signOut(auth);
+document.getElementById('sidebarSignOut').onclick  = async () => {
+  const ok = await confirm('👋', 'Sign out?', 'You will be returned to the login screen.');
+  if (ok) signOut(auth);
+};
+
+onAuthStateChanged(auth, async user => {
+  lockScreen.classList.remove('hidden');
+  deniedScreen.style.display = 'none';
+  adminApp.style.display = 'none';
+  lockScreen.style.display = 'none';
+
+  if (!user) {
+    lockScreen.style.display = 'flex';
+    document.getElementById('lockSignInBtn').disabled = false;
+    document.getElementById('lockSignInBtn').innerHTML = 'Sign in with Google';
+    document.getElementById('lockError').textContent = '';
+    return;
+  }
+
+  // ── FIRESTORE EMAIL CHECK ────────────────
+  // Looks up admins/{user.email} in Firestore.
+  // If the document exists, access is granted.
+  // To add yourself: Firestore → admins collection → new doc with your email as the ID.
+  try {
+    const adminDoc = await getDoc(doc(db, 'admins', user.email));
+    if (!adminDoc.exists()) {
+      deniedScreen.style.display = 'flex';
+      return;
+    }
+  } catch (e) {
+    document.getElementById('lockError').textContent = 'Could not verify admin access. Check Firestore rules.';
+    lockScreen.style.display = 'flex';
+    await signOut(auth);
+    return;
+  }
+
+  // Granted — show the panel
+  adminApp.style.display = 'flex';
+  document.getElementById('sidebarName').textContent = user.displayName || 'Admin';
+  const av = document.getElementById('sidebarAvatar');
+  const safePhoto = (user.photoURL && /^https:\/\//.test(user.photoURL)) ? user.photoURL : null;
+  if (safePhoto) {
+    av.src = safePhoto;
+    av.style.display = 'block';
+  } else {
+    av.style.display = 'none';
+  }
+
+  initAdminPanel();
+});
+
+// ──────────────────────────────────────────
+//  NAVIGATION
+// ──────────────────────────────────────────
+let initialized = {};
+
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    const section = btn.dataset.section;
+    document.getElementById(`section-${section}`).classList.add('active');
+    if (!initialized[section]) {
+      initialized[section] = true;
+      if (section === 'leaderboard') loadLeaderboardSection('today');
+      if (section === 'words')       loadWordsSection();
+      if (section === 'announcement') loadAnnouncement();
+      if (section === 'analytics')   loadAnalytics();
+    }
+  });
+});
+
+// ──────────────────────────────────────────
+//  DASHBOARD
+// ──────────────────────────────────────────
+async function initAdminPanel() {
+  initialized = {};
+  loadDashboard();
+}
+
+// ── CANONICAL DAILY WORDS ─────────────────────────────────────────────────
+// This list MUST stay in sync with the dailyWords array in words.js.
+// The game uses this same order + the same dayIndex formula.
+// If you save a Firestore override via the Daily Words tab, that takes
+// precedence for both the admin dashboard and the live game.
+const CANONICAL_DAILY_WORDS = [
+  { word: "TIDE",     hint: "The ocean breathes in and out" },
+  { word: "DRIFT",    hint: "What currents do to lost things" },
+  { word: "PEARL",    hint: "Born inside an oyster's pain" },
+  { word: "FLOAT",    hint: "To rest on water's surface" },
+  { word: "SHORE",    hint: "Where the tide says goodbye" },
+  { word: "SWELL",    hint: "A long, gentle wave from afar" },
+  { word: "WRACK",    hint: "Seaweed left by the tide" },
+  { word: "BASIN",    hint: "Where ocean water collects" },
+  { word: "EDDY",     hint: "Water spinning in a circle" },
+  { word: "HAVEN",    hint: "A safe harbour from storms" },
+  { word: "WAKE",     hint: "The trail a boat leaves behind" },
+  { word: "FATHOM",   hint: "A unit of ocean depth" },
+  { word: "CURRENT",  hint: "The ocean's invisible river" },
+  { word: "MARINA",   hint: "A harbour for small boats" },
+  { word: "SERAPH",   hint: "An ocean's guardian spirit" },
+  { word: "MANTLE",   hint: "The layer under the ocean floor" },
+  { word: "GROTTO",   hint: "A sea cave, cool and quiet" },
+  { word: "FOSSIL",   hint: "A creature frozen in stone time" },
+  { word: "SPIRAL",   hint: "How a nautilus shell grows" },
+  { word: "SALINITY", hint: "How salty the sea is" },
+  { word: "RIPPLE",   hint: "A small wave spreading outward" },
+  { word: "ABYSSAL",  hint: "Relating to the deepest ocean zone" },
+  { word: "TRAWL",    hint: "A drag-net through the sea" },
+  { word: "PLUME",    hint: "A rising column in the ocean" },
+  { word: "BILLOW",   hint: "A rolling, swelling wave" },
+  { word: "MOORING",  hint: "A fixed point to tie a boat" },
+  { word: "KNOT",     hint: "A sailor's unit of speed" },
+  { word: "ESTUARY",  hint: "Where a river widens to meet the sea" },
+  { word: "BARNACLE", hint: "It clings to the hull of ships" },
+  { word: "ZEPHYR",   hint: "A gentle west wind over the water" },
+  { word: "SHOALING", hint: "Waves growing shallower near shore" },
+];
+
+function calcTodayIndex(words) {
+  const now = new Date();
+  const dayIndex = Math.floor(
+    (Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(2026, 0, 1)) / 86400000
+  ) % words.length;
+  return Math.abs(dayIndex);
+}
+
+// Returns today's word from the active list (Firestore override if set, else canonical).
+// Async because it may need to fetch from Firestore.
+async function getTodayWord() {
+  let words = CANONICAL_DAILY_WORDS;
+  try {
+    const override = await getDoc(doc(db, 'config', 'dailyWords'));
+    if (override.exists() && Array.isArray(override.data().words) && override.data().words.length) {
+      words = override.data().words;
+    }
+  } catch { /* use canonical fallback */ }
+  const idx = calcTodayIndex(words);
+  return { ...words[idx], index: idx, total: words.length };
+}
+
+async function loadDashboard() {
+  // Today's word — fetched async so it reflects any Firestore override
+  const wod = await getTodayWord();
+  document.getElementById('wodWord').textContent = wod.word;
+  document.getElementById('wodHint').textContent = wod.hint;
+
+  document.getElementById('wodIndex').textContent = `Entry #${wod.index + 1} of ${wod.total} in rotation`;
+
+  try {
+    // All-time leaderboard
+    const allSnap = await getDocs(collection(db, 'leaderboard'));
+    const allDocs = allSnap.docs.map(d => d.data());
+    document.getElementById('statTotalPlayers').textContent = allDocs.length;
+
+    const banned = allDocs.filter(d => d.banned);
+    document.getElementById('statBannedCount').textContent = banned.length;
+
+    const topScore = allDocs.reduce((max, d) => Math.max(max, d.score || 0), 0);
+    document.getElementById('statTopScore').textContent = topScore;
+
+    // Today's scores
+    const dateStr = new Date().toISOString().split('T')[0];
+    const todayQ  = query(collection(db, 'leaderboard_daily'), orderBy('score', 'desc'), limit(50));
+    const todaySnap = await getDocs(todayQ);
+    const todayDocs  = todaySnap.docs.map(d => d.data()).filter(d => d.date === dateStr);
+    document.getElementById('statTodayScores').textContent = todayDocs.length;
+
+    // Recent wins table
+    const recent = todayDocs.slice(0, 6);
+    if (!recent.length) {
+      document.getElementById('dashRecentTable').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🌊</div>
+          <div class="empty-state-text">No wins recorded today yet.</div>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('dashRecentTable').innerHTML = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Player</th><th>Topic</th><th>Score</th><th>Streak</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${recent.map((s, i) => `
+            <tr>
+              <td><span class="rank-badge rank-${i+1}">${i + 1}</span></td>
+              <td class="td-name">
+                ${safeAvatarUrl(s.photoURL) ? `<img class="user-avatar-sm" src="${safeAvatarUrl(s.photoURL)}" alt="" />` : ''}
+                ${escHtml(s.name)}
+                ${s.banned ? '<span class="banned-badge">banned</span>' : ''}
+              </td>
+              <td class="td-muted">${escHtml(s.topicName || s.topic || '—')}</td>
+              <td class="td-score">${safeScore(s.score)}</td>
+              <td class="td-muted">${(s.streak && Number.isFinite(Number(s.streak))) ? `${Math.floor(s.streak)} 🔥` : '—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    console.error(e);
+    toast('Failed to load dashboard data.');
+  }
+}
+
+// ──────────────────────────────────────────
+//  LEADERBOARD SECTION
+// ──────────────────────────────────────────
+document.querySelectorAll('[data-lb-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-lb-tab]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadLeaderboardSection(btn.dataset.lbTab);
+  });
+});
+
+async function loadLeaderboardSection(tab) {
+  const wrap = document.getElementById('lbTableWrap');
+  wrap.innerHTML = '<div class="loading-row"><span class="spinner"></span> Loading…</div>';
+
+  try {
+    let docs = [];
+
+    if (tab === 'banned') {
+      const snap = await getDocs(collection(db, 'leaderboard'));
+      docs = snap.docs.filter(d => d.data().banned).map(d => ({ id: d.id, ...d.data() }));
+    } else if (tab === 'today') {
+      const dateStr = new Date().toISOString().split('T')[0];
+      const q = query(collection(db, 'leaderboard_daily'), orderBy('score', 'desc'), limit(50));
+      const snap = await getDocs(q);
+      docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => d.date === dateStr);
+    } else {
+      const q = query(collection(db, 'leaderboard'), orderBy('score', 'desc'), limit(50));
+      const snap = await getDocs(q);
+      docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    if (!docs.length) {
+      wrap.innerHTML = `<div class="empty-state">
+        <div class="empty-state-icon">🏆</div>
+        <div class="empty-state-text">No entries found.</div>
+      </div>`;
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>${tab === 'banned' ? 'User' : '#'}</th>
+            ${tab !== 'banned' ? '<th>Player</th>' : ''}
+            <th>Topic</th>
+            <th>Score</th>
+            <th>Streak</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${docs.map((s, i) => `
+            <tr id="lbrow-${escHtml(s.id)}">
+              <td>
+                ${tab === 'banned'
+                  ? `${safeAvatarUrl(s.photoURL) ? `<img class="user-avatar-sm" src="${safeAvatarUrl(s.photoURL)}" alt="" />` : ''}${escHtml(s.name)}`
+                  : `<span class="rank-badge ${i < 3 ? `rank-${i+1}` : ''}">${i + 1}</span>`
+                }
+              </td>
+              ${tab !== 'banned' ? `<td class="td-name">
+                ${safeAvatarUrl(s.photoURL) ? `<img class="user-avatar-sm" src="${safeAvatarUrl(s.photoURL)}" alt="" />` : ''}
+                ${escHtml(s.name)}
+                ${s.banned ? '<span class="banned-badge">banned</span>' : ''}
+              </td>` : ''}
+              <td class="td-muted">${escHtml(s.topicName || s.topic || '—')}</td>
+              <td class="td-score">${safeScore(s.score)}</td>
+              <td class="td-muted">${(s.streak && Number.isFinite(Number(s.streak))) ? `${Math.floor(s.streak)} 🔥` : '—'}</td>
+              <td>
+                <div class="td-actions">
+                  <button class="btn btn-danger btn-sm" onclick="adminDeleteScore('${escHtml(s.id)}', '${tab}')">
+                    🗑 Delete
+                  </button>
+                  ${!s.banned
+                    ? `<button class="btn btn-danger btn-sm" style="background:rgba(255,107,107,0.2);" onclick="adminBanUser('${escHtml(s.uid)}', '${escHtml(s.name)}')">🚫 Ban</button>`
+                    : `<button class="btn btn-ghost btn-sm" onclick="adminUnbanUser('${escHtml(s.uid)}', '${escHtml(s.name)}')">✅ Unban</button>`
+                  }
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    console.error(e);
+    wrap.innerHTML = '<div class="loading-row" style="color:var(--danger);">Failed to load. Check Firestore rules.</div>';
+  }
+}
+
+// Exposed to inline onclick
+window.adminDeleteScore = async (docId, tab) => {
+  const ok = await confirm('🗑️', 'Delete this score?', 'This removes the entry permanently. The player can still play.');
+  if (!ok) return;
+  try {
+    const collName = tab === 'today' ? 'leaderboard_daily' : 'leaderboard';
+    await deleteDoc(doc(db, collName, docId));
+    document.getElementById(`lbrow-${docId}`)?.remove();
+    toast('Score deleted.');
+  } catch (e) {
+    console.error(e);
+    toast('Delete failed — check Firestore rules.');
+  }
+};
+
+window.adminBanUser = async (uid, name) => {
+  const ok = await confirm('🚫', `Ban ${name}?`, 'Their scores will be flagged. You can unban from the Banned tab.');
+  if (!ok) return;
+  try {
+    await updateDoc(doc(db, 'leaderboard', uid), { banned: true });
+    toast(`${name} banned.`);
+    loadLeaderboardSection(document.querySelector('[data-lb-tab].active')?.dataset.lbTab || 'alltime');
+  } catch (e) {
+    console.error(e);
+    toast('Ban failed.');
+  }
+};
+
+window.adminUnbanUser = async (uid, name) => {
+  const ok = await confirm('✅', `Unban ${name}?`, 'Their scores will appear normally again.');
+  if (!ok) return;
+  try {
+    await updateDoc(doc(db, 'leaderboard', uid), { banned: false });
+    toast(`${name} unbanned.`);
+    loadLeaderboardSection('banned');
+  } catch (e) {
+    toast('Unban failed.');
+  }
+};
+
+// ──────────────────────────────────────────
+//  DAILY WORDS
+// ──────────────────────────────────────────
+let wordsData = [];
+
+async function loadWordsSection() {
+  // getTodayWord() already fetches the Firestore override and falls back to
+  // CANONICAL_DAILY_WORDS — reuse it so there's only one source of truth.
+  const wrap = document.getElementById('wordsTableWrap');
+  wrap.innerHTML = '<div class="loading-row"><span class="spinner"></span> Loading…</div>';
+
+  const wod = await getTodayWord();
+
+  // Populate wordsData from Firestore if an override exists, else canonical list
+  try {
+    const overrideDoc = await getDoc(doc(db, 'config', 'dailyWords'));
+    wordsData = (overrideDoc.exists() && Array.isArray(overrideDoc.data().words) && overrideDoc.data().words.length)
+      ? overrideDoc.data().words
+      : [...CANONICAL_DAILY_WORDS];
+  } catch {
+    wordsData = [...CANONICAL_DAILY_WORDS];
+  }
+
+  renderWordsTable(wod.index);
+}
+
+function renderWordsTable(todayIdx) {
+  const wrap = document.getElementById('wordsTableWrap');
+  wrap.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr><th>#</th><th>Word</th><th>Hint</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        ${wordsData.map((w, i) => `
+          <tr class="${i === todayIdx ? 'today-row' : ''}" id="wrow-${i}">
+            <td class="td-muted" style="width:40px;">${i + 1}${i === todayIdx ? ' 📍' : ''}</td>
+            <td style="font-family:var(--font-display); font-weight:700; letter-spacing:2px;">${escHtml(w.word)}</td>
+            <td class="td-muted">${escHtml(w.hint)}</td>
+            <td>
+              <div class="td-actions">
+                <button class="btn btn-ghost btn-sm" onclick="adminEditWord(${i})">✏️ Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="adminDeleteWord(${i})">🗑</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+window.adminEditWord = (i) => {
+  const row = document.getElementById(`wrow-${i}`);
+  const w = wordsData[i];
+  row.innerHTML = `
+    <td class="td-muted">${i + 1}</td>
+    <td><input value="${escHtml(w.word)}" id="ew-word-${i}" style="text-transform:uppercase; font-family:var(--font-display); font-weight:700; letter-spacing:2px;" /></td>
+    <td><input value="${escHtml(w.hint)}" id="ew-hint-${i}" /></td>
+    <td>
+      <div class="td-actions">
+        <button class="btn btn-primary btn-sm" onclick="adminSaveWord(${i})">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadWordsSection()">Cancel</button>
+      </div>
+    </td>`;
+  // Style the inputs
+  row.querySelectorAll('input').forEach(inp => {
+    inp.style.cssText = 'background:var(--current);border:1px solid var(--glow-soft);border-radius:4px;color:var(--white);font-size:13px;padding:5px 8px;width:100%;outline:none;font-family:var(--font-body);';
+  });
+};
+
+window.adminSaveWord = async (i) => {
+  const newWord = document.getElementById(`ew-word-${i}`).value.trim().toUpperCase();
+  const newHint = document.getElementById(`ew-hint-${i}`).value.trim();
+  if (!newWord || !newHint) { toast('Word and hint are required.'); return; }
+  wordsData[i] = { word: newWord, hint: newHint };
+  await persistWords();
+  const wod = await getTodayWord();
+  renderWordsTable(wod.index);
+  toast('Word updated.');
+};
+
+window.adminDeleteWord = async (i) => {
+  const ok = await confirm('🗑️', `Delete "${wordsData[i].word}"?`, 'This removes it from the daily word rotation permanently.');
+  if (!ok) return;
+  wordsData.splice(i, 1);
+  await persistWords();
+  const wod = await getTodayWord();
+  renderWordsTable(wod.index);
+  toast('Word removed from rotation.');
+};
+
+document.getElementById('addWordBtn').onclick = async () => {
+  const word = document.getElementById('newWordInput').value.trim().toUpperCase();
+  const hint = document.getElementById('newHintInput').value.trim();
+  if (!word) { toast('Enter a word first.'); return; }
+  if (!hint) { toast('Enter a hint for the word.'); return; }
+  wordsData.push({ word, hint });
+  await persistWords();
+  const wod = await getTodayWord();
+  renderWordsTable(wod.index);
+  document.getElementById('newWordInput').value = '';
+  document.getElementById('newHintInput').value = '';
+  toast(`"${word}" added to the rotation.`);
+};
+
+async function persistWords() {
+  try {
+    await setDoc(doc(db, 'config', 'dailyWords'), { words: wordsData, updatedAt: serverTimestamp() });
+  } catch (e) {
+    toast('Saved locally. Firestore write failed — check rules for config collection.');
+  }
+}
+
+// ──────────────────────────────────────────
+//  ANNOUNCEMENT
+// ──────────────────────────────────────────
+async function loadAnnouncement() {
+  try {
+    const d = await getDoc(doc(db, 'config', 'announcement'));
+    const msg = d.exists() ? (d.data().message || '') : '';
+    const el = document.getElementById('currentAnnouncement');
+    if (msg) {
+      el.textContent = msg;
+      el.classList.remove('empty');
+    } else {
+      el.textContent = 'No active announcement.';
+      el.classList.add('empty');
+    }
+  } catch {
+    document.getElementById('currentAnnouncement').textContent = 'Could not load from Firestore.';
+  }
+}
+
+document.getElementById('announcementInput').addEventListener('input', function() {
+  const preview = document.getElementById('announcementPreview');
+  preview.textContent = this.value || 'Type a message above to preview it here.';
+});
+
+document.getElementById('saveAnnouncementBtn').onclick = async () => {
+  const msg = document.getElementById('announcementInput').value.trim();
+  if (!msg) { toast('Write a message first.'); return; }
+  try {
+    await setDoc(doc(db, 'config', 'announcement'), { message: msg, updatedAt: serverTimestamp() });
+    document.getElementById('currentAnnouncement').textContent = msg;
+    document.getElementById('currentAnnouncement').classList.remove('empty');
+    toast('Announcement published to all players.');
+  } catch {
+    toast('Firestore write failed. Check config collection rules.');
+  }
+};
+
+document.getElementById('clearAnnouncementBtn').onclick = async () => {
+  const ok = await confirm('📣', 'Clear the announcement?', 'The banner will disappear for all players immediately.');
+  if (!ok) return;
+  try {
+    await setDoc(doc(db, 'config', 'announcement'), { message: '', updatedAt: serverTimestamp() });
+    document.getElementById('currentAnnouncement').textContent = 'No active announcement.';
+    document.getElementById('currentAnnouncement').classList.add('empty');
+    document.getElementById('announcementInput').value = '';
+    document.getElementById('announcementPreview').textContent = 'Type a message above to preview it here.';
+    toast('Announcement cleared.');
+  } catch {
+    toast('Clear failed — check Firestore rules.');
+  }
+};
+
+// ──────────────────────────────────────────
+//  ANALYTICS
+// ──────────────────────────────────────────
+async function loadAnalytics() {
+  try {
+    // Fetch all daily scores
+    const q = query(collection(db, 'leaderboard_daily'), orderBy('score', 'desc'), limit(200));
+    const snap = await getDocs(q);
+    const allDocs = snap.docs.map(d => d.data());
+
+    // Last 7 days
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toISOString().split('T')[0]);
+    }
+
+    const countsByDay = {};
+    days.forEach(day => { countsByDay[day] = 0; });
+    allDocs.forEach(doc => {
+      if (doc.date && countsByDay[doc.date] !== undefined) countsByDay[doc.date]++;
+    });
+
+    const maxVal = Math.max(...Object.values(countsByDay), 1);
+
+    // Chart
+    const chartWrap = document.getElementById('winsChart');
+    chartWrap.innerHTML = days.map(day => {
+      const count = countsByDay[day];
+      const pct = Math.max(4, Math.round((count / maxVal) * 100));
+      const label = day.slice(5); // MM-DD
+      return `
+        <div class="chart-bar-group">
+          <div class="chart-bar" style="height:${pct}%;" data-val="${count}"></div>
+          <div class="chart-label">${label}</div>
+        </div>`;
+    }).join('');
+
+    // Win rate estimate (total wins in board / rough total attempts)
+    const totalWins = allDocs.length;
+    const allTimeDocs = (await getDocs(collection(db, 'leaderboard'))).size;
+    const winRate = allTimeDocs > 0 ? Math.round((totalWins / Math.max(allTimeDocs * 3, 1)) * 100) : 0;
+    const cappedRate = Math.min(winRate, 100);
+
+    document.getElementById('winRateDisplay').innerHTML = `
+      <div style="font-family:var(--font-display); font-size:36px; font-weight:700; color:var(--glow); margin-bottom:4px;">${cappedRate}%</div>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:10px;">estimated from recorded wins vs known players</div>
+      <div class="win-bar-track"><div class="win-bar-fill" style="width:${cappedRate}%"></div></div>`;
+
+    // Topics
+    const topicCount = {};
+    allDocs.forEach(d => {
+      const t = d.topicName || d.topic || 'Unknown';
+      topicCount[t] = (topicCount[t] || 0) + 1;
+    });
+
+    const sorted = Object.entries(topicCount).sort((a, b) => b[1] - a[1]);
+    if (!sorted.length) {
+      document.getElementById('topTopics').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎯</div><div class="empty-state-text">No topic data yet.</div></div>';
+    } else {
+      document.getElementById('topTopics').innerHTML = sorted.map(([name, count]) =>
+        `<span class="topic-pill">${escHtml(name)} <span class="topic-pill-count">${count}</span></span>`
+      ).join('');
+    }
+
+  } catch (e) {
+    console.error(e);
+    toast('Analytics load failed — check Firestore rules.');
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Block admin panel from indexing
+Disallow: /admin.html
+Disallow: /admin
+
+# Allow Google to crawl all assets needed for rendering
+User-agent: Googlebot
+Allow: /
+Allow: /*.js
+Allow: /*.css
+
+User-agent: Googlebot-Image
+Allow: /icons/
+Allow: /screenshots/
+Allow: /og-image.png
+
+Sitemap: https://wordtide.in/sitemap.xml
