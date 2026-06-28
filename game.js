@@ -121,7 +121,11 @@ const els = {
   howToModal:        document.getElementById('howToModal'),
   closeModal:        document.getElementById('closeModal'),
   streakCount:       document.getElementById('streakCount'),
+  streakPill:        document.getElementById('streakPill'),
   muteBtn:           document.getElementById('muteBtn'),
+  topicCountdownTime: document.getElementById('topicCountdownTime'),
+  streakMilestone:   document.getElementById('streakMilestone'),
+  streakMilestoneText: document.getElementById('streakMilestoneText'),
   // Auth & leaderboard buttons are injected dynamically by buildAuthUI()
   authBtn:           null,
   leaderboardBtn:    null,
@@ -165,6 +169,8 @@ function init() {
   bindEvents();
   showScreen('topic');
   loadAnnouncement(); // fetch banner from Firestore
+  startCountdownTicker(); // live "new word in Xh Ym" on topic screen
+  maybeShowGuestModal(); // first-visit sign-in prompt
 
   // Keep state.user in sync with Firebase Auth changes
   onUserChange(async user => {
@@ -173,6 +179,9 @@ function init() {
     // When a user signs in, pull their authoritative streak from Firestore
     // and override whatever was loaded from localStorage.
     if (user) {
+      // Mark this device as seen so the guest modal never appears again
+      try { localStorage.setItem('wordtide_seen', '1'); } catch (e) {}
+      closeGuestModal();
       const remote = await getStreakFromFirestore();
       if (remote !== null) {
         state.streak         = remote.streak;
@@ -188,11 +197,57 @@ function init() {
           state.streak = 0;
           await saveStreakToFirestore({ streak: 0, lastPlayedDate: state.lastPlayedDate });
         }
-        els.streakCount.textContent = state.streak;
+        updateStreakPill();
         updateSpecialWordButton();
       }
     }
   });
+}
+
+
+// ==========================================
+//  LIVE DAILY COUNTDOWN TICKER
+//  Updates the "New word in Xh Ym Zs" display
+//  every second on the topic screen.
+// ==========================================
+
+function getMsUntilMidnight() {
+  const now      = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return tomorrow - now;
+}
+
+function formatCountdown(ms) {
+  const totalSecs = Math.max(0, Math.floor(ms / 1000));
+  const h  = Math.floor(totalSecs / 3600);
+  const mn = Math.floor((totalSecs % 3600) / 60);
+  const s  = totalSecs % 60;
+  if (h > 0) return `${h}h ${mn}m`;
+  if (mn > 0) return `${mn}m ${s}s`;
+  return `${s}s`;
+}
+
+function startCountdownTicker() {
+  function tick() {
+    const ms  = getMsUntilMidnight();
+    const txt = formatCountdown(ms);
+    if (els.topicCountdownTime) els.topicCountdownTime.textContent = txt;
+    if (els.nextWordCountdown)  els.nextWordCountdown.textContent  = txt;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+
+// ==========================================
+//  STREAK PILL  — visual state
+//  Glows gold when streak > 0
+// ==========================================
+
+function updateStreakPill() {
+  if (!els.streakPill) return;
+  els.streakCount.textContent = state.streak;
+  els.streakPill.classList.toggle('streak-active', state.streak > 0);
 }
 
 
@@ -207,16 +262,6 @@ function buildAuthUI() {
   const headerStats = document.querySelector('.header-stats');
   if (!headerStats) return;
 
-  // ── Sign-in / avatar button ──
-  const authBtn = document.createElement('button');
-  authBtn.className = 'btn-icon auth-btn';
-  authBtn.id        = 'authBtn';
-  authBtn.title     = 'Sign in with Google';
-  authBtn.setAttribute('aria-label', 'Sign in');
-  authBtn.textContent = '👤';
-  headerStats.insertBefore(authBtn, headerStats.firstChild);
-  els.authBtn = authBtn;
-
   // ── Leaderboard button ──
   const lbBtn = document.createElement('button');
   lbBtn.className = 'btn-icon';
@@ -227,44 +272,105 @@ function buildAuthUI() {
   headerStats.insertBefore(lbBtn, headerStats.firstChild);
   els.leaderboardBtn = lbBtn;
 
-  authBtn.addEventListener('click', handleAuthClick);
+  // ── Auth cluster: wraps all auth-related buttons ──
+  const authCluster = document.createElement('div');
+  authCluster.className = 'auth-cluster';
+  authCluster.id        = 'authCluster';
+  headerStats.insertBefore(authCluster, headerStats.firstChild);
+
+  // Guest state: clear "Sign in" button with Google logo
+  const signInBtn = document.createElement('button');
+  signInBtn.className = 'auth-signin-btn';
+  signInBtn.id        = 'authBtn';
+  signInBtn.title     = 'Sign in with Google to save your score and streak';
+  signInBtn.setAttribute('aria-label', 'Sign in with Google');
+  signInBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+    Sign in`;
+  signInBtn.hidden = true; // hidden until auth state resolves
+  authCluster.appendChild(signInBtn);
+  els.authBtn = signInBtn;
+
+  // Signed-in state: avatar circle (links to profile page)
+  const avatarLink = document.createElement('a');
+  avatarLink.className = 'auth-avatar-btn';
+  avatarLink.id        = 'authAvatarBtn';
+  avatarLink.href      = 'profile.html';
+  avatarLink.title     = 'View your profile';
+  avatarLink.setAttribute('aria-label', 'View profile');
+  avatarLink.innerHTML = `<span class="auth-avatar-inner" id="authAvatarInner">👤</span>`;
+  avatarLink.hidden    = true;
+  authCluster.appendChild(avatarLink);
+
+  // Signed-in state: explicit sign-out button (arrow-out icon)
+  const signOutBtn = document.createElement('button');
+  signOutBtn.className = 'auth-signout-btn';
+  signOutBtn.id        = 'authSignOutBtn';
+  signOutBtn.title     = 'Sign out';
+  signOutBtn.setAttribute('aria-label', 'Sign out');
+  signOutBtn.innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>`;
+  signOutBtn.hidden = true;
+  authCluster.appendChild(signOutBtn);
+
+  signInBtn.addEventListener('click', handleAuthClick);
+  signOutBtn.addEventListener('click', async () => {
+    await signOutUser();
+    showToast('Signed out');
+  });
+
   lbBtn.addEventListener('click', openLeaderboard);
 }
 
-/** Reflect signed-in state on the auth button (avatar photo vs generic icon). */
+/** Reflect signed-in state on the auth cluster. */
 function updateAuthButton() {
-  if (!els.authBtn) return;
+  const signInBtn  = document.getElementById('authBtn');
+  const avatarBtn  = document.getElementById('authAvatarBtn');
+  const signOutBtn = document.getElementById('authSignOutBtn');
+  const innerEl    = document.getElementById('authAvatarInner');
+  if (!signInBtn) return;
+
   if (state.user) {
-    // Sanitise display name against XSS (title attribute, not innerHTML, but be safe)
-    const safeName = escHtml(state.user.displayName || 'User');
-    els.authBtn.title = `Signed in as ${safeName} — click to sign out`;
-    els.authBtn.textContent = state.user.photoURL ? '' : '✅';
-    if (state.user.photoURL) {
-      // Guard: only allow https:// URLs for the avatar to prevent CSS injection
-      const url = state.user.photoURL;
-      if (/^https:\/\//.test(url)) {
-        els.authBtn.style.backgroundImage = `url(${JSON.stringify(url)})`;
-        els.authBtn.style.backgroundSize  = 'cover';
-        els.authBtn.style.borderRadius    = '50%';
+    // Hide sign-in, show avatar + sign-out
+    signInBtn.hidden  = true;
+    if (avatarBtn)  avatarBtn.hidden  = false;
+    if (signOutBtn) signOutBtn.hidden = false;
+
+    if (innerEl) {
+      if (state.user.photoURL && /^https:\/\//.test(state.user.photoURL)) {
+        innerEl.textContent = '';
+        innerEl.style.backgroundImage    = `url(${JSON.stringify(state.user.photoURL)})`;
+        innerEl.style.backgroundSize     = 'cover';
+        innerEl.style.backgroundPosition = 'center';
+      } else {
+        innerEl.textContent            = '👤';
+        innerEl.style.backgroundImage  = '';
       }
     }
+    if (avatarBtn) avatarBtn.title = `Profile — ${escHtml(state.user.displayName || 'User')}`;
   } else {
-    els.authBtn.title          = 'Sign in with Google';
-    els.authBtn.textContent    = '👤';
-    els.authBtn.style.backgroundImage = '';
+    // Show sign-in, hide avatar + sign-out
+    signInBtn.hidden  = false;
+    if (avatarBtn)  avatarBtn.hidden  = true;
+    if (signOutBtn) signOutBtn.hidden = true;
   }
 }
 
 async function handleAuthClick() {
-  if (state.user) {
-    await signOutUser();
-    showToast('Signed out');
-  } else {
-    showToast('Opening Google sign-in…');
-    const user = await signInWithGoogle();
-    if (user) showToast(`Welcome, ${user.displayName}! 🌊`);
-    else       showToast('Sign-in cancelled');
-  }
+  // This button is only shown to guests
+  showToast('Opening Google sign-in…');
+  const user = await signInWithGoogle();
+  if (user) showToast(`Welcome, ${user.displayName}! 🌊`);
+  else       showToast('Sign-in cancelled');
 }
 
 
@@ -396,7 +502,7 @@ function loadPersistence() {
     }
   } catch (e) { /* ignore corrupt storage */ }
 
-  els.streakCount.textContent = state.streak;
+  updateStreakPill();
   updateSpecialWordButton();
 }
 
@@ -467,14 +573,26 @@ function updateDailyWordHint() {
  */
 function updateSpecialWordButton() {
   if (!els.specialWordBtn) return;
+  const banner = document.getElementById('topicCountdown');
   if (state.hasPlayedTodaySpecial) {
     els.specialWordBtn.textContent  = '✅ Played today';
     els.specialWordBtn.disabled     = true;
     els.specialWordBtn.title        = 'You have already played the Word of the Day today. Come back tomorrow!';
+    if (banner) {
+      banner.style.opacity = '0.45';
+      const call = banner.querySelector('.chb-call');
+      if (call) call.textContent = 'Come back tomorrow!';
+      const sub = banner.querySelector('.chb-right');
+      if (sub) {
+        const textNode = sub.lastChild;
+        if (textNode && textNode.nodeType === 3) textNode.textContent = ' Next word resets at midnight.';
+      }
+    }
   } else {
     els.specialWordBtn.textContent  = 'Play the Special Word';
     els.specialWordBtn.disabled     = false;
     els.specialWordBtn.title        = '';
+    if (banner) banner.style.opacity = '';
   }
 }
 
@@ -591,6 +709,101 @@ async function loadAnnouncement() {
     // Non-critical — silently ignore
     console.warn('Announcement fetch failed:', e);
   }
+}
+
+
+// ==========================================
+//  GUEST MODAL — first-visit sign-in prompt
+//
+//  Shows once per browser, 1.2s after page load.
+//  Skipped entirely if user is already signed in.
+//  Dismissed by signing in OR clicking "Continue as Guest".
+//  "Continue as Guest" sets localStorage flag so it never
+//  shows again on this device.
+// ==========================================
+
+function maybeShowGuestModal() {
+  // Don't show if already seen on this device
+  try {
+    if (localStorage.getItem('wordtide_seen')) return;
+  } catch (e) { return; }
+
+  // Delay slightly so the page feels settled before the modal appears
+  setTimeout(() => {
+    // If the auth state resolved quickly and user is signed in, skip
+    if (state.user) return;
+    buildAndShowGuestModal();
+  }, 1200);
+}
+
+function buildAndShowGuestModal() {
+  // Remove if already exists (safety)
+  document.getElementById('guestModal')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay guest-modal-overlay open';
+  overlay.id        = 'guestModal';
+
+  overlay.innerHTML = `
+    <div class="modal guest-modal">
+      <div class="gm-wave-row" aria-hidden="true">≋ ≋ ≋</div>
+
+      <div class="gm-icon">🌊</div>
+      <h2 class="gm-title">You're playing as a Guest</h2>
+      <p class="gm-body">
+        Your streak and scores are saved on this device only.<br/>
+        Sign in with Google to:
+      </p>
+
+      <ul class="gm-perks">
+        <li><span class="gm-perk-icon">🔥</span> Keep your streak safe across devices</li>
+        <li><span class="gm-perk-icon">🏆</span> Appear on the global leaderboard</li>
+        <li><span class="gm-perk-icon">📊</span> Track your stats over time</li>
+      </ul>
+
+      <button class="btn-special gm-signin-btn" id="gmSignInBtn">
+        <span style="font-size:16px">G</span>&nbsp; Sign in with Google
+      </button>
+
+      <button class="gm-skip-btn" id="gmSkipBtn">Continue as Guest</button>
+
+      <p class="gm-note">Free forever. No spam. One tap.</p>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Sign-in button
+  document.getElementById('gmSignInBtn').addEventListener('click', async () => {
+    Audio.sfx.keyClick();
+    closeGuestModal();
+    showToast('Opening Google sign-in…');
+    const user = await signInWithGoogle();
+    if (user) showToast(`Welcome, ${user.displayName}! 🌊`);
+    else       showToast('Sign-in cancelled');
+  });
+
+  // Skip — mark as seen so it never shows again
+  document.getElementById('gmSkipBtn').addEventListener('click', () => {
+    Audio.sfx.keyClick();
+    closeGuestModal();
+    try { localStorage.setItem('wordtide_seen', '1'); } catch (e) {}
+  });
+
+  // Clicking the dark overlay also dismisses (same as skip)
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) {
+      closeGuestModal();
+      try { localStorage.setItem('wordtide_seen', '1'); } catch (e) {}
+    }
+  });
+}
+
+function closeGuestModal() {
+  const el = document.getElementById('guestModal');
+  if (!el) return;
+  el.classList.add('gm-closing');
+  setTimeout(() => el.remove(), 300);
 }
 
 
@@ -1213,7 +1426,7 @@ async function endGame(won, reason = '') {
     // this is the key gate that prevents replaying for streak farming.
     state.hasPlayedTodaySpecial = true;
     savePersistence();
-    els.streakCount.textContent = state.streak;
+    updateStreakPill();
     updateSpecialWordButton();
   }
 
@@ -1302,8 +1515,11 @@ function showResult(won, timeUsed) {
   if (state.isSpecialWord) {
     els.finalStreak.textContent = `${state.streak} 🔥`;
     document.querySelector('.streak-stat')?.style.removeProperty('display');
+    // Show milestone banner at notable streaks
+    showStreakMilestone(state.streak, won);
   } else {
     document.querySelector('.streak-stat')?.style.setProperty('display', 'none');
+    if (els.streakMilestone) els.streakMilestone.classList.remove('visible');
   }
 
   // Prompt anonymous winners to sign in so their score is saved
@@ -1314,6 +1530,36 @@ function showResult(won, timeUsed) {
   renderMiniBoardResult();
   updateNextWordCountdown();
   showScreen('result');
+}
+
+/**
+ * Show an animated streak milestone banner on the result screen.
+ * Fires for first streak, every 5, and at the 30-day mark.
+ */
+function showStreakMilestone(streak, won) {
+  if (!els.streakMilestone || !els.streakMilestoneText) return;
+  els.streakMilestone.classList.remove('visible');
+
+  let msg = '';
+  if (!won) {
+    if (streak === 0) msg = "💔 Streak broken. Start fresh tomorrow!";
+  } else if (streak === 1) {
+    msg = "🌊 First daily word! Come back tomorrow to build your streak.";
+  } else if (streak === 30) {
+    msg = "🏆 30-day streak! You're a WordTide legend.";
+  } else if (streak === 7) {
+    msg = "🔥🔥 7-day streak — one whole week of tides!";
+  } else if (streak % 5 === 0) {
+    msg = `🔥 ${streak}-day streak! Keep the chain alive tomorrow.`;
+  } else if (streak === 2) {
+    msg = `🔥 ${streak} days in a row — don't break the chain!`;
+  }
+
+  if (msg) {
+    els.streakMilestoneText.textContent = msg;
+    void els.streakMilestone.offsetWidth; // reflow to re-trigger animation
+    els.streakMilestone.classList.add('visible');
+  }
 }
 
 function getStarRank(score) {
@@ -1357,12 +1603,8 @@ function renderMiniBoardResult() {
 
 /** Calculate and display time until the next Word of the Day. */
 function updateNextWordCountdown() {
-  const now      = new Date();
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  const diff     = Math.floor((tomorrow - now) / 1000);
-  const h        = Math.floor(diff / 3600);
-  const mn       = Math.floor((diff % 3600) / 60);
-  els.nextWordCountdown.textContent = `${h}h ${mn}m`;
+  const ms = getMsUntilMidnight();
+  els.nextWordCountdown.textContent = formatCountdown(ms);
 }
 
 

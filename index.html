@@ -272,8 +272,21 @@
     <div class="screen-header">
       <p class="day-label" id="dayLabel">— June 27, 2026 —</p>
       <h1 class="screen-title">Choose your<br/><em>tide</em> today</h1>
-      <p class="screen-sub">Pick a theme. Guess early for big points — greens on guess 1 score more than guess 5. Win fast for a bonus. You have 5 minutes.</p>
     </div>
+
+    <!-- COUNTDOWN HERO BANNER — visible immediately, before scrolling -->
+    <div class="countdown-hero-banner" id="topicCountdown">
+      <div class="chb-left">
+        <div class="chb-label">⏳ New word in</div>
+        <div class="chb-time" id="topicCountdownTime">—</div>
+      </div>
+      <div class="chb-right">
+        <span class="chb-call">Don't break the chain!</span>
+        Play the daily word before midnight
+      </div>
+    </div>
+
+    <p class="screen-sub">Pick a theme or play the daily word to keep your streak alive.</p>
 
     <div class="topic-grid" id="topicGrid">
       <!-- filled by JS -->
@@ -318,8 +331,8 @@
     </div>
 
     <div class="word-hint-area">
-      <p class="word-hint-text" id="wordHint">_ _ _ _ _</p>
       <p class="category-hint" id="categoryHint"></p>
+      <p class="word-hint-text" id="wordHint">_ _ _ _ _</p>
       <button class="btn-reveal-hint" id="revealHintBtn" title="Reveal one random letter (max 3) — each press drops your green score one tier" aria-label="Reveal a letter, costs one scoring tier, max 3 times">
         💡 Reveal a Letter <span class="hint-cost">greens → 8 pts</span>
       </button>
@@ -377,6 +390,9 @@
 
     <div class="next-word-notice" id="nextWordNotice">
       Next special word in <span id="nextWordCountdown">—</span>
+    </div>
+    <div class="streak-milestone" id="streakMilestone">
+      <span id="streakMilestoneText">🔥 3-day streak!</span>
     </div>
   </div>
 </main>
