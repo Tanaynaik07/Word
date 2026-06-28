@@ -43,6 +43,12 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   position: relative;
+  /* Prevent mobile magnification tool and context menus during gameplay.
+     Required by CrazyGames and improves UX across all portal embeds. */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 /* ── ANNOUNCEMENT BANNER ── */

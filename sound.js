@@ -331,3 +331,14 @@ const Audio = (() => {
   // ── Public API ──
   return { sfx, startBGM, stopBGM, toggleMute, isMuted, getCtx };
 })();
+
+// ── iOS AudioContext resume ───────────────────────────────────────────
+// On iOS, AudioContext enters an interrupted/suspended state when the
+// app is backgrounded or inside an iframe (portal embeds).
+// WebKit requires a direct user gesture to resume — visibility change
+// alone is insufficient. This listener covers both cases.
+// Required by CrazyGames QA; improves audio reliability everywhere.
+document.addEventListener('touchend', () => {
+  const ctx = Audio.getCtx();
+  if (ctx && ctx.state === 'suspended') ctx.resume();
+}, { passive: true });

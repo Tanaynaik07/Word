@@ -32,6 +32,20 @@ import {
   saveStreakToFirestore,
 } from './firebase.js';
 
+// ==========================================
+//  PORTAL DETECTION
+//  True when the game is running inside any
+//  iframe (itch.io, CrazyGames, Poki, etc.)
+//  Used to suppress Google Auth flows that
+//  look broken inside embedded contexts.
+//  All game features work normally in guest
+//  mode — auth just isn't offered.
+// ==========================================
+const IN_IFRAME = (() => {
+  try { return window.self !== window.top; }
+  catch (e) { return true; } // cross-origin parent → assume iframe
+})();
+
 // ── GAME CONSTANTS ────────────────────────
 const TIMER_DURATION      = 300;                    // 5 minutes in seconds
 const TIMER_CIRCUMFERENCE = 2 * Math.PI * 24;       // SVG ring circumference
@@ -271,6 +285,15 @@ function buildAuthUI() {
   lbBtn.textContent = '🏆';
   headerStats.insertBefore(lbBtn, headerStats.firstChild);
   els.leaderboardBtn = lbBtn;
+
+  // ── Skip Google Auth entirely when running inside any iframe ──
+  // Portals (CrazyGames, itch.io, Poki…) have their own auth systems.
+  // A Google popup inside their iframe looks broken and may be blocked.
+  // The leaderboard button above still works — scores are readable.
+  if (IN_IFRAME) {
+    lbBtn.addEventListener('click', openLeaderboard);
+    return; // no sign-in / sign-out buttons injected
+  }
 
   // ── Auth cluster: wraps all auth-related buttons ──
   const authCluster = document.createElement('div');
@@ -723,6 +746,10 @@ async function loadAnnouncement() {
 // ==========================================
 
 function maybeShowGuestModal() {
+  // Never show the sign-in prompt inside a portal iframe —
+  // Google popups are broken/blocked in that context.
+  if (IN_IFRAME) return;
+
   // Don't show if already seen on this device
   try {
     if (localStorage.getItem('wordtide_seen')) return;
